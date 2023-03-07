@@ -35,7 +35,7 @@ local function dump(o)
 	end
 end
 
-function M.deploy()
+function M.deploy(file_path)
 	local os = require("os")
 
 	if M.config.password == nil then
@@ -44,29 +44,32 @@ function M.deploy()
 
 	local current_file = vim.fn.expand("%:p")
 
-	if deploy_path == nil then
-		for local_path, remote_path in pairs(M.config.mapping) do
-			print(local_path)
-			print(remote_path)
-			print(current_file)
+	for _, mapping in pairs(M.config.mapping) do
+		if string.match(current_file, mapping.local_path) ~= nil then
+			local deploy_path = current_file:gsub(mapping.local_path, M.config.root_path .. mapping.remote_path)
+			local deploy_dir = deploy_path:gsub("(.*/).*", "%1")
+			local mkdir_command = string.format(
+				"sshpass -p %s ssh -p %s %s@%s mkdir -p %s > /dev/null",
+				M.config.password,
+				M.config.port,
+				M.config.user,
+				M.config.ip,
+				deploy_dir
+			)
+			local command = string.format(
+				"sshpass -p %s rsync -rz -e 'ssh -p %s' %s %s@%s:%s > /dev/null",
+				M.config.password,
+				M.config.port,
+				current_file,
+				M.config.user,
+				M.config.ip,
+				deploy_path
+			)
 
-			if string.match(current_file, local_path) ~= nil then
-				local deploy_path = current_file:gsub(local_path, M.config.root_path .. remote_path)
-				print(deploy_path)
-				local command = string.format(
-					"sshpass -p %s rsync --mkpath -rvz -e 'ssh -p %s' %s %s@%s:%s",
-					M.config.password,
-					M.config.port,
-					current_file,
-					M.config.user,
-					M.config.ip,
-					deploy_path
-				)
-
-				local result = os.execute(command)
-				print("File uploaded to" .. deploy_path)
-				return
-			end
+			os.execute(mkdir_command)
+			os.execute(command)
+			print("File uploaded to" .. deploy_path)
+			return
 		end
 		print("Can't find mapping")
 	end
