@@ -35,7 +35,11 @@ local function dump(o)
 	end
 end
 
-function M.deploy(file_path)
+function M.deploy()
+	if M.confg == nil then
+		return
+	end
+
 	local os = require("os")
 
 	if M.config.password == nil then
@@ -68,11 +72,12 @@ function M.deploy(file_path)
 
 			os.execute(mkdir_command)
 			os.execute(command)
+
 			print("File uploaded to" .. deploy_path)
 			return
 		end
-		print("Can't find mapping")
 	end
+	print("Can't find mapping")
 end
 
 return M
